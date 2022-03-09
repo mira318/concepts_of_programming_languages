@@ -189,7 +189,13 @@ int main(){
         }
         line++;
     }
+    std::string hello = "Привет";
 
+    int cur_num;
+    for(int i = 0; i < hello.length(); ++i){
+        cur_num = int(hello[i]);
+        output.write(reinterpret_cast<const char*>(&cur_num), sizeof(int));
+    }
     input.close();
     output.close();
     return 0;
