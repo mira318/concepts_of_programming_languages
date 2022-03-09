@@ -24,6 +24,7 @@ void fill_command_codes(){
     command_codes["SAFE"] = 9;
     command_codes["INP"] = 10;
     command_codes["OUT"] = 11;
+    command_codes["IP"] = 12;
 }
 
 void fill_command_args(){
@@ -39,6 +40,7 @@ void fill_command_args(){
     command_args_nums["SAFE"] = 2;
     command_args_nums["INP"] = 1;
     command_args_nums["OUT"] = 1;
+    command_args_nums["IP"] = 1;
 }
 
 void fill_register_adds(){
@@ -70,26 +72,32 @@ bool get_number(std::string number_string, int* res){
 
 bool write_to_output(std::ofstream& binary_output, const std::string current_arg){
     int number;
+    int val_type = -1;
     if(current_arg.length() < 1){
         return 0;
     }
+
     if(register_adds.find(current_arg) != register_adds.end()){
         number = register_adds[current_arg];
-        binary_output << std::hex << 0 << std::hex << number;
-        return true;
+        val_type = 0;
     }
-    if(current_arg[0] == '#'){
+
+    if(val_type == -1 && current_arg[0] == '#'){
         if(!get_number(&current_arg[1], &number)){
             return false;
         }
-        binary_output << std::hex << 1 << std::hex << number;
-        return true;
+        val_type = 1;
     }
 
-    if(!get_number(current_arg, &number)){
-        return false;
+    if(val_type == -1){
+        if(!get_number(current_arg, &number)){
+            return false;
+        }
+        val_type = 2;
     }
-    binary_output << std::hex << 2 << std::hex << number;
+
+    binary_output.write(reinterpret_cast<const char*>(&val_type), sizeof(int));
+    binary_output.write(reinterpret_cast<const char*>(&number), sizeof(number));
     return true;
 }
 
@@ -101,9 +109,6 @@ bool get_args(std::ofstream& binary_output, int args_num, std::string input_stri
         current_arg = "";
         while(j < input_string.length() && std::isblank(input_string[j])){
             j++;
-        }
-        if(input_string[j] == '\n'){
-            return false;
         }
         t = 0;
         while(j < input_string.length() && !std::isblank(input_string[j])){
@@ -121,8 +126,11 @@ bool get_args(std::ofstream& binary_output, int args_num, std::string input_stri
             return false;
         }
     }
+    int val_type = 0;
+    int num = 0;
     for(int args = args_num; args < ARGS_IN_COMMAND; ++args){
-        binary_output << std::hex << 0 << std::hex << 0;
+        binary_output.write(reinterpret_cast<const char*>(&val_type), sizeof(int));
+        binary_output.write(reinterpret_cast<const char*>(&num), sizeof(int));
     }
     return true;
 }
@@ -140,7 +148,7 @@ int main(){
         return -1;
     }
 
-    std::ofstream output("output.dat", std::ios::out | std::ios::binary | std::ios::trunc);
+    std::ofstream output("../output.bin", std::ios::out | std::ios::binary | std::ios::trunc);
     if(!output.is_open()){
         std::cout << "Unable to open output file, check permissions." << std::endl;
         input.close();
@@ -172,10 +180,11 @@ int main(){
             output.close();
             return -1;
         }
-
-        output << std::hex << command_codes[command];
+        output.write(reinterpret_cast<const char *>(&command_codes[command]), sizeof(int));
         if(!get_args(output, command_args_nums[command], next_line, i)){
             std::cout << "Bad arguments in line " << line << std::endl;
+            input.close();
+            output.close();
             return -1;
         }
         line++;
