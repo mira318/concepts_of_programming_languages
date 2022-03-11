@@ -5,7 +5,7 @@
 
 const int MAX_COMMAND_LEN = 10;
 const int MAX_ARG_LEN = 20;
-const int ARGS_IN_COMMAND = 2;
+const int MAX_ARGS_IN_COMMAND = 2;
 
 std::map<std::string, int> command_codes;
 std::map<std::string, int> command_args_nums;
@@ -25,6 +25,7 @@ void fill_command_codes(){
     command_codes["INP"] = 10;
     command_codes["OUT"] = 11;
     command_codes["IP"] = 12;
+    command_codes["OUTS"] = 13;
 }
 
 void fill_command_args(){
@@ -41,6 +42,7 @@ void fill_command_args(){
     command_args_nums["INP"] = 1;
     command_args_nums["OUT"] = 1;
     command_args_nums["IP"] = 1;
+    command_args_nums["OUTS"] = 1;
 }
 
 void fill_register_adds(){
@@ -79,21 +81,21 @@ bool write_to_output(std::ofstream& binary_output, const std::string current_arg
 
     if(register_adds.find(current_arg) != register_adds.end()){
         number = register_adds[current_arg];
-        val_type = 0;
+        val_type = 1;
     }
 
     if(val_type == -1 && current_arg[0] == '#'){
         if(!get_number(&current_arg[1], &number)){
             return false;
         }
-        val_type = 1;
+        val_type = 2;
     }
 
     if(val_type == -1){
         if(!get_number(current_arg, &number)){
             return false;
         }
-        val_type = 2;
+        val_type = 3;
     }
 
     binary_output.write(reinterpret_cast<const char*>(&val_type), sizeof(int));
@@ -128,7 +130,7 @@ bool get_args(std::ofstream& binary_output, int args_num, std::string input_stri
     }
     int val_type = 0;
     int num = 0;
-    for(int args = args_num; args < ARGS_IN_COMMAND; ++args){
+    for(int args = args_num; args < MAX_ARGS_IN_COMMAND; ++args){
         binary_output.write(reinterpret_cast<const char*>(&val_type), sizeof(int));
         binary_output.write(reinterpret_cast<const char*>(&num), sizeof(int));
     }
