@@ -331,6 +331,7 @@ int add(){
                         std::cout << "Impossible address in ADD" << std::endl;
                         return -3;
                     }
+                    std::cout << "ADD 2 numbers from memory is too long, but I will do it." << std::endl;
                     int val2;
                     memcpy(&val2, memory_buffer + arg2, sizeof(int));
                     ans = val1 + val2;
@@ -414,6 +415,7 @@ int sub(){
                         return -3;
                     }
                     int val2;
+                    std::cout << "WARNING:SUB 2 numbers from memory is too long, but I will do it." << std::endl;
                     memcpy(&val2, memory_buffer + arg2, sizeof(int));
                     ans = val1 - val2;
                     break;
@@ -529,6 +531,7 @@ int read_command(){
     int command_num;
     memcpy(&command_num, memory_buffer + registers[IP_REGISTER], sizeof(int));
     registers[IP_REGISTER] += sizeof(int);
+    //std::cout << "command_num = " << command_num << std::endl;
     switch(command_num){
         case 1:
             return move();
