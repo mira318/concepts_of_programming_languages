@@ -3,9 +3,6 @@
 #include <string>
 #include <cstring>
 
-const int MAX_COMMAND_LEN = 10;
-const int MAX_ARG_LEN = 20;
-const int MAX_ARGS_IN_COMMAND = 2;
 const int USER_REGISTER_NUM = 7;
 const int IP_REGISTER = 7;
 const int REGISTER_NUM = 8;
@@ -251,12 +248,12 @@ int jump_if_zero(bool zero){
             break;
 
         case 2:
-            if(!check_address(arg2)){
+            if(!check_address(arg1)){
                 std::cout << "Wrong address in JZ" << std::endl;
                 return -3;
             }
             int val;
-            memcpy(&val, memory_buffer + arg2, sizeof(int));
+            memcpy(&val, memory_buffer + arg1, sizeof(int));
             if((val == 0) == zero){
                 registers[IP_REGISTER] = arg2;
             }
@@ -272,6 +269,14 @@ int jump_if_zero(bool zero){
             std::cout << "Incorrect first argument in JZ" << std::endl;
             return -3;
     }
+    return 0;
+}
+
+int add(){
+    return 0;
+}
+
+int sub(){
     return 0;
 }
 
@@ -368,7 +373,6 @@ int read_command(){
     int command_num;
     memcpy(&command_num, memory_buffer + registers[IP_REGISTER], sizeof(int));
     registers[IP_REGISTER] += sizeof(int);
-    //std::cout << "command_num = " << command_num << std::endl;
     switch(command_num){
         case 1:
             return move();
@@ -378,6 +382,8 @@ int read_command(){
             return jump_if_zero(false);
         case 4:
             return -1;
+        case 5:
+            return add();
         case 10:
             return input_number();
         case 11:
@@ -389,7 +395,6 @@ int read_command(){
         default:
             return -2;
     }
-
 }
 
 bool read_first_command(std::ifstream& binary_input, std::string& filename){
