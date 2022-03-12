@@ -3,20 +3,18 @@
 #include <string>
 #include <cstring>
 
-const int MAX_COMMAND_LEN = 10;
-const int MAX_ARG_LEN = 20;
-const int MAX_ARGS_IN_COMMAND = 2;
-const int REGISTER_NUM = 7;
+const int USER_REGISTER_NUM = 7;
+const int IP_REGISTER = 7;
+const int REGISTER_NUM = 8;
 
 char* memory_buffer;
 int buffer_sz = 0;
 int registers[REGISTER_NUM];
 
-int read_string(std::ifstream& binary_input){}
-
-int read_something(std::ifstream& binary_input, int* res){
+int read_something(int* res){
     int val_type;
-    binary_input.read(reinterpret_cast<char*>(&val_type), sizeof(int));
+    memcpy(&val_type, memory_buffer + registers[IP_REGISTER], sizeof(int));
+    registers[IP_REGISTER] += sizeof(int);
     if(val_type <= 0 && val_type > 4){
         std::cout << "Unknown value type" << std::endl;
         return -1;
@@ -25,13 +23,13 @@ int read_something(std::ifstream& binary_input, int* res){
         std::cout << "Don't expect a string here" << std::endl;
         return -2;
     }
-    binary_input.read(reinterpret_cast<char*>(res), sizeof(int));
+    memcpy(res, memory_buffer + registers[IP_REGISTER], sizeof(int));
+    registers[IP_REGISTER] += sizeof(int);
     return val_type;
 }
 
 bool check_register(int reg_num){
-    if(reg_num > REGISTER_NUM || reg_num < 0){
-        std::cout << "Wrong register value" << std::endl;
+    if(reg_num >= USER_REGISTER_NUM || reg_num < 0){
         return false;
     }
     return true;
@@ -44,41 +42,46 @@ bool check_address(int address){
     return true;
 }
 
-int read_register(std::ifstream& binary_input){
+int read_register(){
     int reg_num;
-    if(read_something(binary_input, &reg_num) != 1){
+    if(read_something(&reg_num) != 1){
         std::cout << "Expected address, wrong value type" << std::endl;
         return -1;
     }
     if(!check_register(reg_num)){
-        return -1;
+        std::cout << "Wrong register number" << std::endl;
+        return -2;
     }
     return reg_num;
 }
 
-
-int read_address(std::ifstream& binary_input){
+int read_address(){
     int address;
-    if(read_something(binary_input, &address) != 2){
+    if(read_something(&address) != 2){
         std::cout << "Expected address, wrong value type" << std::endl;
         return -1;
     }
-    return  address;
+    if(!check_address(address)){
+        std::cout << "Impossible address" << std::endl;
+        return -2;
+    }
+    return address;
 }
 
-int read_number(std::ifstream& binary_input){
+int read_number(){
     int number;
-    if(read_something(binary_input, &number) != 3){
-        std::cout << "Expected address, wrong value type" << std::endl;
+    if(read_something(&number) != 3){
+        std::cout << "Expected number, wrong value type" << std::endl;
         return -1;
     }
     return  number;
 }
-int move(std::ifstream& binary_input) {
+
+int move() {
     // source -> destination
     int arg1, arg2;
-    int val1_type = read_something(binary_input, &arg1);
-    int val2_type = read_something(binary_input, &arg2);
+    int val1_type = read_something(&arg1);
+    int val2_type = read_something(&arg2);
     if (val1_type < 0 || val2_type < 0) {
         return -3;
     }
@@ -172,20 +175,154 @@ int move(std::ifstream& binary_input) {
     return 0;
 }
 
-
-int move_instruction_pointer(std::ifstream& binary_input){
-    int address = read_address(binary_input);
-    if(!check_address(address)){
-        std::cout << "Incorrect address in IP" << std::endl;
+int move_instruction_pointer(){
+    int address = read_address();
+    if(address < 0){
         return -3;
     }
-    binary_input.seekg(address, std::ios::beg);
+    registers[IP_REGISTER] = address;
     return 0;
 }
 
-int output_number(std::ifstream& binary_input){
+int jump_if_zero(){
+    int val1_type;
+    int arg1, arg2;
+    val1_type = read_something(&arg1);
+    arg2 = read_address();
+    if(val1_type < 0){
+        return -3;
+    }
+    switch(val1_type) {
+        case 1:
+            if(!check_register(arg1)){
+                std::cout << "Wrong register number in JZ" << std::endl;
+                return -3;
+            }
+            if(registers[arg1] == 0){
+                registers[IP_REGISTER] = arg2;
+            }
+            break;
+
+        case 2:
+            if(!check_address(arg2)){
+                std::cout << "Wrong address in JZ" << std::endl;
+                return -3;
+            }
+            int val;
+            memcpy(&val, memory_buffer + arg2, sizeof(int));
+            if(val == 0){
+               registers[IP_REGISTER] = arg2;
+            }
+            break;
+
+        case 3:
+            if(arg1 == 0){
+                registers[IP_REGISTER] = arg2;
+            }
+            break;
+
+        default:
+            std::cout << "Incorrect first argument in JZ" << std::endl;
+            return -3;
+    }
+    return 0;
+}
+
+int jump_if_zero(bool zero){
+    int val1_type;
+    int arg1, arg2;
+    val1_type = read_something(&arg1);
+    arg2 = read_address();
+    if(val1_type < 0){
+        return -3;
+    }
+    switch(val1_type) {
+        case 1:
+            if(!check_register(arg1)){
+                std::cout << "Wrong register number in JZ" << std::endl;
+                return -3;
+            }
+            if((registers[arg1] == 0) == zero){
+                registers[IP_REGISTER] = arg2;
+            }
+            break;
+
+        case 2:
+            if(!check_address(arg1)){
+                std::cout << "Wrong address in JZ" << std::endl;
+                return -3;
+            }
+            int val;
+            memcpy(&val, memory_buffer + arg1, sizeof(int));
+            if((val == 0) == zero){
+                registers[IP_REGISTER] = arg2;
+            }
+            break;
+
+        case 3:
+            if((arg1 == 0) == zero){
+                registers[IP_REGISTER] = arg2;
+            }
+            break;
+
+        default:
+            std::cout << "Incorrect first argument in JZ" << std::endl;
+            return -3;
+    }
+    return 0;
+}
+
+int add(){
+    return 0;
+}
+
+int sub(){
+    return 0;
+}
+
+int input_number(){
     int arg;
-    int val_type = read_something(binary_input, &arg);
+    int number;
+    int arg_type = read_something(&arg);
+    if(arg_type < 0){
+        return -3;
+    }
+
+    switch(arg_type){
+        case 1:
+            if(!check_register(arg)){
+                std::cout << "Wrong register number in INP" << std::endl;
+                return -3;
+            }
+            std::cin >> number;
+            registers[arg] = number;
+            break;
+
+        case 2:
+            if(!check_address(arg)){
+                std::cout << "Wrong address in INP" << std::endl;
+                return -3;
+            }
+            std::cin >> number;
+            memcpy(memory_buffer + arg, &number, sizeof(int));
+            break;
+
+        default:
+            std::cout << "Incorrect argument in INP" << std::endl;
+            return -3;
+    }
+
+    registers[IP_REGISTER] += 2 * sizeof(int);
+    return 0;
+}
+
+int input_string(std::ifstream& binary_input){
+    return 0;
+}
+
+int output_number(){
+    int arg;
+    int val_type = read_something(&arg);
     switch(val_type){
         case 1:
             if(!check_register(arg)){
@@ -213,14 +350,13 @@ int output_number(std::ifstream& binary_input){
             std::cout << "Incorrect argument in OUT" << std::endl;
             return -3;
     }
-    binary_input.seekg(2 * sizeof(int), std::ios::cur);
+    registers[IP_REGISTER] += 2 * sizeof(int);
     return 0;
 }
 
-int output_string(std::ifstream& binary_input){
-    int address = read_address(binary_input);
-    if(!check_address(address)){
-        std::cout << "Incorrect address in OUTS" << std::endl;
+int output_string(){
+    int address = read_address();
+    if(address < 0){
         return -3;
     }
     int i = address;
@@ -229,69 +365,82 @@ int output_string(std::ifstream& binary_input){
         ++i;
     }
     std::cout << std::endl;
-    binary_input.seekg(2 * sizeof(int), std::ios::cur);
+    registers[IP_REGISTER] += 2 * sizeof(int);
     return 0;
 }
 
-int read_command(std::ifstream& binary_input){
+int read_command(){
     int command_num;
-    binary_input.read(reinterpret_cast<char*>(&command_num), sizeof(int));
-    // std::cout << "command_num = " << command_num << std::endl;
+    memcpy(&command_num, memory_buffer + registers[IP_REGISTER], sizeof(int));
+    registers[IP_REGISTER] += sizeof(int);
     switch(command_num){
         case 1:
-            return move(binary_input);
-        case 11:
-            return output_number(binary_input);
-        case 12:
-            return move_instruction_pointer(binary_input);
-        case 13:
-            return output_string(binary_input);
-        default:
+            return move();
+        case 2:
+            return jump_if_zero(true);
+        case 3:
+            return jump_if_zero(false);
+        case 4:
             return -1;
+        case 5:
+            return add();
+        case 10:
+            return input_number();
+        case 11:
+            return output_number();
+        case 12:
+            return move_instruction_pointer();
+        case 13:
+            return output_string();
+        default:
+            return -2;
     }
-
 }
 
 bool read_first_command(std::ifstream& binary_input, std::string& filename){
+    binary_input.seekg(0, std::ios::end);
+    buffer_sz = binary_input.tellg();
+    binary_input.seekg(0, std::ios::beg);
+    memory_buffer = new char[buffer_sz];
+
+    if(!binary_input.read(reinterpret_cast<char*>(memory_buffer), buffer_sz)){
+        std::cout << "ERROR: Can't read memory from file" << std::endl;
+        binary_input.close();
+        return 0;
+    }
+    binary_input.close();
+    registers[IP_REGISTER] = 0;
+
     int command_num;
-    binary_input.read(reinterpret_cast<char*>(&command_num), sizeof(int));
+    memcpy(&command_num, memory_buffer + registers[IP_REGISTER], sizeof(int));
     if(command_num != 12){
         std::cout << "ERROR: Any program should start with IP command." << std::endl;
         binary_input.close();
         return 0;
     }
+    registers[IP_REGISTER] += sizeof(int);
 
     int arg_type;
-    binary_input.read(reinterpret_cast<char*>(&arg_type), sizeof(int));
+    memcpy(&arg_type, memory_buffer + registers[IP_REGISTER], sizeof(int));
     if(arg_type != 2){
         std::cout << "ERROR: IP command takes an address" << std::endl;
         binary_input.close();
         return 0;
     }
+    registers[IP_REGISTER] += sizeof(int);
 
     int command_start_address;
-    binary_input.read(reinterpret_cast<char*>(&command_start_address), sizeof(int));
-
-    binary_input.seekg(0, std::ios::end);
-    buffer_sz = binary_input.tellg();
-    memory_buffer = new char[buffer_sz];
-    std::ifstream memory_input(filename, std::ios::in | std::ios::binary);
-
-    if(!memory_input.read(reinterpret_cast<char*>(memory_buffer), buffer_sz)){
-        std::cout << "ERROR: Can't read memory from file" << std::endl;
-        memory_input.close();
-        binary_input.close();
+    memcpy(&command_start_address, memory_buffer + registers[IP_REGISTER], sizeof(int));
+    if(!check_address(command_start_address)){
+        std::cout << "Incorrect IP address" << std::endl;
         return 0;
     }
-    memory_input.close();
-
-    // Seekg will fail if the address is bad
-    binary_input.seekg(command_start_address, std::ios::beg);
+    registers[IP_REGISTER] = command_start_address;
     return 1;
 }
 
 int main(){
-    for(int i = 0; i < REGISTER_NUM; ++i){
+    for(int i = 0; i < USER_REGISTER_NUM; ++i){
         registers[i] = 0;
     }
 
@@ -305,14 +454,18 @@ int main(){
     if(!read_first_command(input, filename)){
         return -1;
     }
-    while(input.peek() != EOF){
-        switch(read_command(input)){
+    bool stopped = false;
+    while(!stopped){
+        switch(read_command()){
             case 0:
                 break;
 
             case -1:
+                stopped = true;
+                break;
+
+            case -2:
                 std::cout << "Unknown command" << std::endl;
-                input.close();
                 return -1;
 
             case -3:
@@ -321,11 +474,9 @@ int main(){
 
             default:
                 std::cout << "Unknown mistake occurred" << std::endl;
-                input.close();
                 return -1;
         }
     }
-    input.close();
     return 0;
 }
 

@@ -12,16 +12,15 @@ std::map<std::string, int> command_args_nums;
 std::map<std::string, int> register_adds;
 
 void fill_command_codes(){
-    command_codes["MOV"] = 0;
-    command_codes["JMP"] = 1;
+    command_codes["MOV"] = 1;
     command_codes["JZ"] = 2;
     command_codes["JNZ"] = 3;
     command_codes["STOP"] = 4;
     command_codes["ADD"] = 5;
-    command_codes["SUB"] = 6;
-    command_codes["MUL"] = 7;
-    command_codes["LOAD"] = 8;
-    command_codes["SAFE"] = 9;
+    //command_codes["SUB"] = 6;
+    //command_codes["MUL"] = 7;
+    //command_codes["LOAD"] = 8;
+    //command_codes["SAFE"] = 9;
     command_codes["INP"] = 10;
     command_codes["OUT"] = 11;
     command_codes["IP"] = 12;
@@ -30,15 +29,14 @@ void fill_command_codes(){
 
 void fill_command_args(){
     command_args_nums["MOV"] = 2;
-    command_args_nums["JMP"] = 1;
     command_args_nums["JZ"] = 2; // what to check and where to jump
     command_args_nums["JNZ"] = 2;
     command_args_nums["STOP"] = 0;
     command_args_nums["ADD"] = 2;
-    command_args_nums["SUB"] = 2;
-    command_args_nums["MUL"] = 2;
-    command_args_nums["LOAD"] = 2;
-    command_args_nums["SAFE"] = 2;
+    //command_args_nums["SUB"] = 2;
+    //command_args_nums["MUL"] = 2;
+    //command_args_nums["LOAD"] = 2;
+    //command_args_nums["SAFE"] = 2;
     command_args_nums["INP"] = 1;
     command_args_nums["OUT"] = 1;
     command_args_nums["IP"] = 1;
@@ -52,8 +50,8 @@ void fill_register_adds(){
     register_adds["DX"] = 3;
     register_adds["EX"] = 4;
     register_adds["FX"] = 5;
-    register_adds["SP"] = 6;
-    register_adds["CP"] = 7;
+    register_adds["CP"] = 6;
+    register_adds["IP"] = 7;
 }
 
 bool get_number(std::string number_string, int* res){
