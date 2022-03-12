@@ -14,8 +14,6 @@ char* memory_buffer;
 int buffer_sz = 0;
 int registers[REGISTER_NUM];
 
-int read_string(std::ifstream& binary_input){}
-
 int read_something(int* res){
     int val_type;
     memcpy(&val_type, memory_buffer + registers[IP_REGISTER], sizeof(int));
@@ -60,7 +58,6 @@ int read_register(){
     return reg_num;
 }
 
-
 int read_address(){
     int address;
     if(read_something(&address) != 2){
@@ -71,7 +68,7 @@ int read_address(){
         std::cout << "Impossible address" << std::endl;
         return -2;
     }
-    return  address;
+    return address;
 }
 
 int read_number(){
@@ -82,6 +79,7 @@ int read_number(){
     }
     return  number;
 }
+
 int move() {
     // source -> destination
     int arg1, arg2;
@@ -180,13 +178,140 @@ int move() {
     return 0;
 }
 
-
 int move_instruction_pointer(){
     int address = read_address();
     if(address < 0){
         return -3;
     }
     registers[IP_REGISTER] = address;
+    return 0;
+}
+
+int jump_if_zero(){
+    int val1_type;
+    int arg1, arg2;
+    val1_type = read_something(&arg1);
+    arg2 = read_address();
+    if(val1_type < 0){
+        return -3;
+    }
+    switch(val1_type) {
+        case 1:
+            if(!check_register(arg1)){
+                std::cout << "Wrong register number in JZ" << std::endl;
+                return -3;
+            }
+            if(registers[arg1] == 0){
+                registers[IP_REGISTER] = arg2;
+            }
+            break;
+
+        case 2:
+            if(!check_address(arg2)){
+                std::cout << "Wrong address in JZ" << std::endl;
+                return -3;
+            }
+            int val;
+            memcpy(&val, memory_buffer + arg2, sizeof(int));
+            if(val == 0){
+               registers[IP_REGISTER] = arg2;
+            }
+            break;
+
+        case 3:
+            if(arg1 == 0){
+                registers[IP_REGISTER] = arg2;
+            }
+            break;
+
+        default:
+            std::cout << "Incorrect first argument in JZ" << std::endl;
+            return -3;
+    }
+    return 0;
+}
+
+int jump_if_zero(bool zero){
+    int val1_type;
+    int arg1, arg2;
+    val1_type = read_something(&arg1);
+    arg2 = read_address();
+    if(val1_type < 0){
+        return -3;
+    }
+    switch(val1_type) {
+        case 1:
+            if(!check_register(arg1)){
+                std::cout << "Wrong register number in JZ" << std::endl;
+                return -3;
+            }
+            if((registers[arg1] == 0) == zero){
+                registers[IP_REGISTER] = arg2;
+            }
+            break;
+
+        case 2:
+            if(!check_address(arg2)){
+                std::cout << "Wrong address in JZ" << std::endl;
+                return -3;
+            }
+            int val;
+            memcpy(&val, memory_buffer + arg2, sizeof(int));
+            if((val == 0) == zero){
+                registers[IP_REGISTER] = arg2;
+            }
+            break;
+
+        case 3:
+            if((arg1 == 0) == zero){
+                registers[IP_REGISTER] = arg2;
+            }
+            break;
+
+        default:
+            std::cout << "Incorrect first argument in JZ" << std::endl;
+            return -3;
+    }
+    return 0;
+}
+
+int input_number(){
+    int arg;
+    int number;
+    int arg_type = read_something(&arg);
+    if(arg_type < 0){
+        return -3;
+    }
+
+    switch(arg_type){
+        case 1:
+            if(!check_register(arg)){
+                std::cout << "Wrong register number in INP" << std::endl;
+                return -3;
+            }
+            std::cin >> number;
+            registers[arg] = number;
+            break;
+
+        case 2:
+            if(!check_address(arg)){
+                std::cout << "Wrong address in INP" << std::endl;
+                return -3;
+            }
+            std::cin >> number;
+            memcpy(memory_buffer + arg, &number, sizeof(int));
+            break;
+
+        default:
+            std::cout << "Incorrect argument in INP" << std::endl;
+            return -3;
+    }
+
+    registers[IP_REGISTER] += 2 * sizeof(int);
+    return 0;
+}
+
+int input_string(std::ifstream& binary_input){
     return 0;
 }
 
@@ -243,10 +368,18 @@ int read_command(){
     int command_num;
     memcpy(&command_num, memory_buffer + registers[IP_REGISTER], sizeof(int));
     registers[IP_REGISTER] += sizeof(int);
-    std::cout << "command_num = " << command_num << std::endl;
+    //std::cout << "command_num = " << command_num << std::endl;
     switch(command_num){
         case 1:
             return move();
+        case 2:
+            return jump_if_zero(true);
+        case 3:
+            return jump_if_zero(false);
+        case 4:
+            return -1;
+        case 10:
+            return input_number();
         case 11:
             return output_number();
         case 12:
@@ -254,7 +387,7 @@ int read_command(){
         case 13:
             return output_string();
         default:
-            return -1;
+            return -2;
     }
 
 }
@@ -316,13 +449,17 @@ int main(){
     if(!read_first_command(input, filename)){
         return -1;
     }
-    while(registers[IP_REGISTER] != buffer_sz){
-        // Надо будет переделать на STOP
+    bool stopped = false;
+    while(!stopped){
         switch(read_command()){
             case 0:
                 break;
 
             case -1:
+                stopped = true;
+                break;
+
+            case -2:
                 std::cout << "Unknown command" << std::endl;
                 return -1;
 
