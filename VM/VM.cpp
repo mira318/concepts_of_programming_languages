@@ -36,7 +36,7 @@ bool check_register(int reg_num){
 }
 
 bool check_address(int address){
-    if(address < 0  || address > buffer_sz){
+    if(address < 0  || address >= buffer_sz){
 	    return false;
     }
     return true;
@@ -181,50 +181,6 @@ int move_instruction_pointer(){
         return -3;
     }
     registers[IP_REGISTER] = address;
-    return 0;
-}
-
-int jump_if_zero(){
-    int val1_type;
-    int arg1, arg2;
-    val1_type = read_something(&arg1);
-    arg2 = read_address();
-    if(val1_type < 0){
-        return -3;
-    }
-    switch(val1_type) {
-        case 1:
-            if(!check_register(arg1)){
-                std::cout << "Wrong register number in JZ" << std::endl;
-                return -3;
-            }
-            if(registers[arg1] == 0){
-                registers[IP_REGISTER] = arg2;
-            }
-            break;
-
-        case 2:
-            if(!check_address(arg2)){
-                std::cout << "Wrong address in JZ" << std::endl;
-                return -3;
-            }
-            int val;
-            memcpy(&val, memory_buffer + arg2, sizeof(int));
-            if(val == 0){
-               registers[IP_REGISTER] = arg2;
-            }
-            break;
-
-        case 3:
-            if(arg1 == 0){
-                registers[IP_REGISTER] = arg2;
-            }
-            break;
-
-        default:
-            std::cout << "Incorrect first argument in JZ" << std::endl;
-            return -3;
-    }
     return 0;
 }
 
@@ -474,10 +430,6 @@ int input_number(){
     return 0;
 }
 
-int input_string(std::ifstream& binary_input){
-    return 0;
-}
-
 int output_number(){
     int arg;
     int val_type = read_something(&arg);
@@ -605,6 +557,7 @@ int main(){
         registers[i] = 0;
     }
 
+    std::cout << "Write assembly program file name" << std::endl;
     std::string filename;
     std::cin >> filename;
     std::ifstream input(filename, std::ios::in | std::ios::binary);

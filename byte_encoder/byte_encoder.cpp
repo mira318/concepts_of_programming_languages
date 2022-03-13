@@ -12,12 +12,12 @@ std::map<std::string, int> command_args_nums;
 std::map<std::string, int> register_adds;
 
 void fill_command_codes(){
-    command_codes["MOV"] = 1;
+    command_codes["MOVE"] = 1;
     command_codes["JZ"] = 2;
     command_codes["JNZ"] = 3;
     command_codes["STOP"] = 4;
     command_codes["ADD"] = 5;
-    //command_codes["SUB"] = 6;
+    command_codes["SUB"] = 6;
     //command_codes["MUL"] = 7;
     //command_codes["LOAD"] = 8;
     //command_codes["SAFE"] = 9;
@@ -28,12 +28,12 @@ void fill_command_codes(){
 }
 
 void fill_command_args(){
-    command_args_nums["MOV"] = 2;
+    command_args_nums["MOVE"] = 2;
     command_args_nums["JZ"] = 2; // what to check and where to jump
     command_args_nums["JNZ"] = 2;
     command_args_nums["STOP"] = 0;
     command_args_nums["ADD"] = 2;
-    //command_args_nums["SUB"] = 2;
+    command_args_nums["SUB"] = 2;
     //command_args_nums["MUL"] = 2;
     //command_args_nums["LOAD"] = 2;
     //command_args_nums["SAFE"] = 2;
@@ -55,7 +55,7 @@ void fill_register_adds(){
 }
 
 bool get_number(std::string number_string, int* res){
-    for(int i = 1; i < number_string.length(); ++i) {
+    for(int i = 0; i < number_string.length(); ++i) {
         if(!std::isdigit(number_string[i])){
             return 0;
         }
@@ -97,11 +97,11 @@ bool write_to_output(std::ofstream& binary_output, const std::string current_arg
     }
 
     binary_output.write(reinterpret_cast<const char*>(&val_type), sizeof(int));
-    binary_output.write(reinterpret_cast<const char*>(&number), sizeof(number));
+    binary_output.write(reinterpret_cast<const char*>(&number), sizeof(int));
     return true;
 }
 
-bool get_args(std::ofstream& binary_output, int args_num, std::string input_string, int start){
+bool get_args(std::ofstream& binary_output, int args_num, const std::string& input_string, int start){
     int j = start;
     std::string current_arg;
     int t;
@@ -112,9 +112,6 @@ bool get_args(std::ofstream& binary_output, int args_num, std::string input_stri
         }
         t = 0;
         while(j < input_string.length() && !std::isblank(input_string[j])){
-            if(input_string[j] == '\n'){
-                return false;
-            }
             current_arg.push_back(input_string[j]);
             j++;
             t++;
@@ -126,13 +123,29 @@ bool get_args(std::ofstream& binary_output, int args_num, std::string input_stri
             return false;
         }
     }
+
     int val_type = 0;
-    int num = 0;
-    for(int args = args_num; args < MAX_ARGS_IN_COMMAND; ++args){
+    int number = 0;
+    for(int i = args_num; i < MAX_ARGS_IN_COMMAND; ++i){
         binary_output.write(reinterpret_cast<const char*>(&val_type), sizeof(int));
-        binary_output.write(reinterpret_cast<const char*>(&num), sizeof(int));
+        binary_output.write(reinterpret_cast<const char*>(&number), sizeof(int));
     }
     return true;
+}
+
+void output_as_char(std::ofstream& binary_output, std::string chars){
+    for(int i = 0; i < chars.length(); ++i){
+        binary_output.write(reinterpret_cast<const char*>(&chars[i]), sizeof(char));
+    }
+}
+
+int output_as_number(std::ofstream& binary_output, std::string number_string){
+    int res;
+    if(!get_number(number_string, &res)){
+        return -1;
+    }
+    binary_output.write(reinterpret_cast<const char*>(&res), sizeof(int));
+    return 0;
 }
 
 int main(){
@@ -140,17 +153,21 @@ int main(){
     fill_command_args();
     fill_register_adds();
 
-    std::string filename;
-    std::cin >> filename;
-    std::ifstream input(filename, std::ios::in);
+    std::string input_filename;
+    std::cout << "Write input file name" << std::endl;
+    std::cin >> input_filename;
+    std::ifstream input(input_filename, std::ios::in);
     if(!input.is_open()){
         std::cout << "Unable to open the input file" << std::endl;
         return -1;
     }
 
-    std::ofstream output("../output.bin", std::ios::out | std::ios::binary | std::ios::trunc);
+    std::string output_filename;
+    std::cout << "Write output file name" << std::endl;
+    std::cin >> output_filename;
+    std::ofstream output(output_filename, std::ios::out | std::ios::binary | std::ios::trunc);
     if(!output.is_open()){
-        std::cout << "Unable to open output file, check permissions." << std::endl;
+        std::cout << "Unable to open output file." << std::endl;
         input.close();
         return -1;
     }
@@ -161,6 +178,25 @@ int main(){
     int line = 0;
 
     while(getline(input, next_line)){
+        if(next_line == ""){
+            line++;
+            continue;
+        }
+
+        if(next_line[0] == '%'){
+            output_as_char(output, &next_line[1]);
+            line++;
+            continue;
+        }
+        if(next_line[0] == '$'){
+            if(output_as_number(output, &next_line[1]) < 0){
+                std::cout << "Unable to make a number from this string, line " << line << std::endl;
+                return -1;
+            }
+            line++;
+            continue;
+        }
+
         i = 0;
         command = "";
         while(i < next_line.length() && !std::isblank(next_line[i])) {
@@ -180,7 +216,7 @@ int main(){
             output.close();
             return -1;
         }
-        output.write(reinterpret_cast<const char *>(&command_codes[command]), sizeof(int));
+        output.write(reinterpret_cast<const char*>(&command_codes[command]), sizeof(int));
         if(!get_args(output, command_args_nums[command], next_line, i)){
             std::cout << "Bad arguments in line " << line << std::endl;
             input.close();
@@ -189,13 +225,7 @@ int main(){
         }
         line++;
     }
-    std::string hello = "Привет";
 
-    int cur_num;
-    for(int i = 0; i < hello.length(); ++i){
-        cur_num = int(hello[i]);
-        output.write(reinterpret_cast<const char*>(&cur_num), sizeof(int));
-    }
     input.close();
     output.close();
     return 0;

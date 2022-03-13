@@ -1,3 +1,7 @@
 IP #16
-MOV AX -99890
+%abacabauig
+MOV 5 AX
+MOV 4 BX
+ADD AX BX
+OUT AX
 STOP
