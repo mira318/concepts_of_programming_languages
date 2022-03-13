@@ -36,7 +36,7 @@ bool check_register(int reg_num){
 }
 
 bool check_address(int address){
-    if(address < 0  || address > buffer_sz){
+    if(address < 0  || address >= buffer_sz){
 	    return false;
     }
     return true;
@@ -184,50 +184,6 @@ int move_instruction_pointer(){
     return 0;
 }
 
-int jump_if_zero(){
-    int val1_type;
-    int arg1, arg2;
-    val1_type = read_something(&arg1);
-    arg2 = read_address();
-    if(val1_type < 0){
-        return -3;
-    }
-    switch(val1_type) {
-        case 1:
-            if(!check_register(arg1)){
-                std::cout << "Wrong register number in JZ" << std::endl;
-                return -3;
-            }
-            if(registers[arg1] == 0){
-                registers[IP_REGISTER] = arg2;
-            }
-            break;
-
-        case 2:
-            if(!check_address(arg2)){
-                std::cout << "Wrong address in JZ" << std::endl;
-                return -3;
-            }
-            int val;
-            memcpy(&val, memory_buffer + arg2, sizeof(int));
-            if(val == 0){
-               registers[IP_REGISTER] = arg2;
-            }
-            break;
-
-        case 3:
-            if(arg1 == 0){
-                registers[IP_REGISTER] = arg2;
-            }
-            break;
-
-        default:
-            std::cout << "Incorrect first argument in JZ" << std::endl;
-            return -3;
-    }
-    return 0;
-}
-
 int jump_if_zero(bool zero){
     int val1_type;
     int arg1, arg2;
@@ -273,10 +229,168 @@ int jump_if_zero(bool zero){
 }
 
 int add(){
+    int val1_type, val2_type;
+    int arg1, arg2;
+    val1_type = read_something(&arg1);
+    val2_type = read_something(&arg2);
+    switch(val1_type){
+        case 1:
+            if(!check_register(arg1)){
+                std::cout << "Wrong register number in ADD" << std::endl;
+                return -3;
+            }
+            switch(val2_type){
+                case 1:
+                    if(!check_register(arg2)){
+                        std::cout << "Wrong register number in ADD" << std::endl;
+                        return -3;
+                    }
+                    registers[arg1] += registers[arg2];
+                    break;
+                case 2:
+                    if(!check_address(arg2)){
+                        std::cout << "Impossible address in ADD" << std::endl;
+                        return -3;
+                    }
+                    int val2;
+                    memcpy(&val2, memory_buffer + arg2, sizeof(int));
+                    registers[arg1] += val2;
+                    break;
+                case 3:
+                    registers[arg1] += arg2;
+                    break;
+                default:
+                    std::cout << "Incorrect second argument in ADD" << std::endl;
+                    return -3;
+            }
+            break;
+
+        case 2:
+            if(!check_address(arg1)){
+                std::cout << "Wrong address in ADD" << std::endl;
+                return -3;
+            }
+            int val1;
+            int ans;
+            memcpy(&val1, memory_buffer + arg1, sizeof(int));
+            switch(val2_type){
+                case 1:
+                    if(!check_register(arg2)){
+                        std::cout << "Wrong register number in ADD" << std::endl;
+                        return -3;
+                    }
+                    ans = val1 + registers[arg2];
+                    break;
+
+                case 2:
+                    if(!check_address(arg2)){
+                        std::cout << "Impossible address in ADD" << std::endl;
+                        return -3;
+                    }
+                    std::cout << "ADD 2 numbers from memory is too long, but I will do it." << std::endl;
+                    int val2;
+                    memcpy(&val2, memory_buffer + arg2, sizeof(int));
+                    ans = val1 + val2;
+                    break;
+
+                case 3:
+                    ans = val1 + arg2;
+                    break;
+
+                default:
+                    std::cout << "Incorrect second argument in ADD" << std::endl;
+                    return -3;
+            }
+            memcpy(memory_buffer + arg1, &ans, sizeof(int));
+            break;
+
+        default:
+            std::cout << "Incorrect first argument in ADD";
+            return -3;
+    }
     return 0;
 }
 
 int sub(){
+    int val1_type, val2_type;
+    int arg1, arg2;
+    val1_type = read_something(&arg1);
+    val2_type = read_something(&arg2);
+    switch(val1_type){
+        case 1:
+            if(!check_register(arg1)){
+                std::cout << "Wrong register number in SUB" << std::endl;
+                return -3;
+            }
+            switch(val2_type){
+                case 1:
+                    if(!check_register(arg2)){
+                        std::cout << "Wrong register number in SUB" << std::endl;
+                        return -3;
+                    }
+                    registers[arg1] -= registers[arg2];
+                    break;
+                case 2:
+                    if(!check_address(arg2)){
+                        std::cout << "Impossible address in SUB" << std::endl;
+                        return -3;
+                    }
+                    int val2;
+                    memcpy(&val2, memory_buffer + arg2, sizeof(int));
+                    registers[arg1] -= val2;
+                    break;
+                case 3:
+                    registers[arg1] -= arg2;
+                    break;
+                default:
+                    std::cout << "Incorrect second argument in SUB" << std::endl;
+                    return -3;
+            }
+            break;
+
+        case 2:
+            if(!check_address(arg1)){
+                std::cout << "Wrong address in SUB" << std::endl;
+                return -3;
+            }
+            int val1;
+            int ans;
+            memcpy(&val1, memory_buffer + arg1, sizeof(int));
+            switch(val2_type){
+                case 1:
+                    if(!check_register(arg2)){
+                        std::cout << "Wrong register number in SUB" << std::endl;
+                        return -3;
+                    }
+                    ans = val1 - registers[arg2];
+                    break;
+
+                case 2:
+                    if(!check_address(arg2)){
+                        std::cout << "Impossible address in SUB" << std::endl;
+                        return -3;
+                    }
+                    int val2;
+                    std::cout << "WARNING:SUB 2 numbers from memory is too long, but I will do it." << std::endl;
+                    memcpy(&val2, memory_buffer + arg2, sizeof(int));
+                    ans = val1 - val2;
+                    break;
+
+                case 3:
+                    ans = val1 - arg2;
+                    break;
+
+                default:
+                    std::cout << "Incorrect second argument in SUB" << std::endl;
+                    return -3;
+            }
+            memcpy(memory_buffer + arg1, &ans, sizeof(int));
+            break;
+
+        default:
+            std::cout << "Incorrect first argument in SUB";
+            return -3;
+    }
     return 0;
 }
 
@@ -313,10 +427,6 @@ int input_number(){
     }
 
     registers[IP_REGISTER] += 2 * sizeof(int);
-    return 0;
-}
-
-int input_string(std::ifstream& binary_input){
     return 0;
 }
 
@@ -373,6 +483,7 @@ int read_command(){
     int command_num;
     memcpy(&command_num, memory_buffer + registers[IP_REGISTER], sizeof(int));
     registers[IP_REGISTER] += sizeof(int);
+    //std::cout << "command_num = " << command_num << std::endl;
     switch(command_num){
         case 1:
             return move();
@@ -384,6 +495,8 @@ int read_command(){
             return -1;
         case 5:
             return add();
+        case 6:
+            return sub();
         case 10:
             return input_number();
         case 11:
@@ -444,6 +557,7 @@ int main(){
         registers[i] = 0;
     }
 
+    std::cout << "Write assembly program file name" << std::endl;
     std::string filename;
     std::cin >> filename;
     std::ifstream input(filename, std::ios::in | std::ios::binary);
@@ -479,4 +593,3 @@ int main(){
     }
     return 0;
 }
-
