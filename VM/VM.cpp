@@ -499,7 +499,6 @@ int call(){
 
     int next_address_after_call = registers[IP_REGISTER] + 2 * sizeof(int);
     memcpy(stack + registers[SP_REGISTER], &next_address_after_call, sizeof(int));
-    std::cout << "pushed address after call = " << next_address_after_call << std::endl;
     registers[SP_REGISTER] += sizeof(int);
 
     registers[IP_REGISTER] = address;
@@ -527,7 +526,6 @@ int read_command(){
     int command_num;
     memcpy(&command_num, memory_buffer + registers[IP_REGISTER], sizeof(int));
     registers[IP_REGISTER] += sizeof(int);
-    std::cout << "command_num = " << command_num << std::endl;
     switch(command_num){
         case 1:
             return move();

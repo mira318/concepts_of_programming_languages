@@ -152,12 +152,9 @@ bool get_args(std::ofstream& binary_output, int args_num, const std::string& inp
 }
 
 bool get_function_name(std::string& input, int line){
-    std::cout << "function name: input = "<< input << std::endl;
-
     int i = 0;
     std::string func_name = "";
     while(i < input.length() && !std::isblank(input[i]) && input[i] != ':') {
-        std::cout << "in while: input[" << i << "] = " << input[i] << std::endl;
         func_name.push_back(input[i]);
         i++;
         if(i > MAX_FUNCTION_NAME_LENGTH){
@@ -165,7 +162,6 @@ bool get_function_name(std::string& input, int line){
             return false;
         }
     }
-    std::cout << "input[" << i << "] = " << input[i] << std::endl;
     if(input[i] != ':'){
         std::cout << "Function name should be followed by : in definition" << std::endl;
         return false;
@@ -249,7 +245,6 @@ int main(){
     int line = 0;
 
     while(getline(input, next_line)){
-        std::cout << "next_line = " << next_line << std::endl;
         if(next_line == ""){
             line++;
             continue;
