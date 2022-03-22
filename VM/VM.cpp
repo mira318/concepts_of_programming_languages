@@ -3,7 +3,7 @@
 #include <string>
 #include <cstring>
 
-const int USER_REGISTER_NUM = 7;
+const int USER_REGISTER_NUM = 12;
 const int BP_REGISTER = 13;
 const int SP_REGISTER = 14;
 const int IP_REGISTER = 15;
@@ -527,7 +527,7 @@ int read_command(){
     int command_num;
     memcpy(&command_num, memory_buffer + registers[IP_REGISTER], sizeof(int));
     registers[IP_REGISTER] += sizeof(int);
-    //std::cout << "command_num = " << command_num << std::endl;
+    std::cout << "command_num = " << command_num << std::endl;
     switch(command_num){
         case 1:
             return move();

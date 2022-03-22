@@ -6,10 +6,14 @@
 const int MAX_COMMAND_LEN = 10;
 const int MAX_ARG_LEN = 20;
 const int MAX_ARGS_IN_COMMAND = 2;
+const int MAX_FUNCTION_NAME_LENGTH = 100;
+const int CHAR_SIZE = 1;
+int next_address = 0;
 
 std::map<std::string, int> command_codes;
 std::map<std::string, int> command_args_nums;
 std::map<std::string, int> register_adds;
+std::map<std::string, int> func_addresses;
 
 void fill_command_codes(){
     command_codes["MOVE"] = 1;
@@ -25,6 +29,8 @@ void fill_command_codes(){
     command_codes["OUT"] = 11;
     command_codes["IP"] = 12;
     command_codes["OUTS"] = 13;
+    command_codes["CALL"] = 14;
+    command_codes["RET"] = 15;
 }
 
 void fill_command_args(){
@@ -41,6 +47,8 @@ void fill_command_args(){
     command_args_nums["OUT"] = 1;
     command_args_nums["IP"] = 1;
     command_args_nums["OUTS"] = 1;
+    command_args_nums["CALL"] = 1;
+    command_args_nums["RET"] = 0;
 }
 
 void fill_register_adds(){
@@ -50,8 +58,16 @@ void fill_register_adds(){
     register_adds["DX"] = 3;
     register_adds["EX"] = 4;
     register_adds["FX"] = 5;
-    register_adds["CP"] = 6;
-    register_adds["IP"] = 7;
+    register_adds["AD"] = 6;
+    register_adds["BD"] = 7;
+    register_adds["CD"] = 8;
+    register_adds["ED"] = 9;
+    register_adds["FD"] = 10;
+    register_adds["CA"] = 11;
+    register_adds["CB"] = 12;
+    register_adds["BP"] = 13;
+    register_adds["SP"] = 14;
+    register_adds["IP"] = 15;
 }
 
 bool get_number(std::string number_string, int* res){
@@ -98,6 +114,7 @@ bool write_to_output(std::ofstream& binary_output, const std::string current_arg
 
     binary_output.write(reinterpret_cast<const char*>(&val_type), sizeof(int));
     binary_output.write(reinterpret_cast<const char*>(&number), sizeof(int));
+    next_address += 2 * sizeof(int);
     return true;
 }
 
@@ -129,13 +146,66 @@ bool get_args(std::ofstream& binary_output, int args_num, const std::string& inp
     for(int i = args_num; i < MAX_ARGS_IN_COMMAND; ++i){
         binary_output.write(reinterpret_cast<const char*>(&val_type), sizeof(int));
         binary_output.write(reinterpret_cast<const char*>(&number), sizeof(int));
+        next_address += 2 * sizeof(int);
     }
     return true;
+}
+
+bool get_function_name(std::string& input, int line){
+    std::cout << "function name: input = "<< input << std::endl;
+
+    int i = 0;
+    std::string func_name = "";
+    while(i < input.length() && !std::isblank(input[i]) && input[i] != ':') {
+        std::cout << "in while: input[" << i << "] = " << input[i] << std::endl;
+        func_name.push_back(input[i]);
+        i++;
+        if(i > MAX_FUNCTION_NAME_LENGTH){
+            std::cout << "Too long function name" << line << std::endl;
+            return false;
+        }
+    }
+    std::cout << "input[" << i << "] = " << input[i] << std::endl;
+    if(input[i] != ':'){
+        std::cout << "Function name should be followed by : in definition" << std::endl;
+        return false;
+    }
+    func_addresses[func_name] = next_address;
+    return true;
+}
+
+bool get_function_call(std::ofstream& binary_output, std::string input){
+    int i = 0;
+    std::string func_name = "";
+
+    while(i < input.length() && !std::isblank(input[i])) {
+        func_name.push_back(input[i]);
+        i++;
+        if(i > MAX_FUNCTION_NAME_LENGTH){
+            return false;
+        }
+    }
+    if(func_addresses.find(func_name) != func_addresses.end()){
+        int val_type = 2;
+        int func_address = func_addresses[func_name];
+        int blank = 0;
+        binary_output.write(reinterpret_cast<const char*>(&val_type), sizeof(int));
+        binary_output.write(reinterpret_cast<const char*>(&func_address), sizeof(int));
+
+        binary_output.write(reinterpret_cast<const char*>(&blank), sizeof(int));
+        binary_output.write(reinterpret_cast<const char*>(&blank), sizeof(int));
+
+        next_address += 4 * sizeof(int);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 void output_as_char(std::ofstream& binary_output, std::string chars){
     for(int i = 0; i < chars.length(); ++i){
         binary_output.write(reinterpret_cast<const char*>(&chars[i]), sizeof(char));
+        next_address += CHAR_SIZE;
     }
 }
 
@@ -145,6 +215,7 @@ int output_as_number(std::ofstream& binary_output, std::string number_string){
         return -1;
     }
     binary_output.write(reinterpret_cast<const char*>(&res), sizeof(int));
+    next_address += sizeof(int);
     return 0;
 }
 
@@ -178,6 +249,7 @@ int main(){
     int line = 0;
 
     while(getline(input, next_line)){
+        std::cout << "next_line = " << next_line << std::endl;
         if(next_line == ""){
             line++;
             continue;
@@ -188,9 +260,20 @@ int main(){
             line++;
             continue;
         }
+
         if(next_line[0] == '$'){
             if(output_as_number(output, &next_line[1]) < 0){
                 std::cout << "Unable to make a number from this string, line " << line << std::endl;
+                return -1;
+            }
+            line++;
+            continue;
+        }
+
+        if(next_line[0] == '.'){
+            if(!get_function_name(next_line, line)){
+                input.close();
+                output.close();
                 return -1;
             }
             line++;
@@ -217,12 +300,23 @@ int main(){
             return -1;
         }
         output.write(reinterpret_cast<const char*>(&command_codes[command]), sizeof(int));
-        if(!get_args(output, command_args_nums[command], next_line, i)){
-            std::cout << "Bad arguments in line " << line << std::endl;
-            input.close();
-            output.close();
-            return -1;
+        next_address += sizeof(int);
+        if(command_codes[command] == 14){
+            if(!get_function_call(output, &next_line[i + 1])){
+                std::cout << "Unknown function name in call" << std::endl;
+                input.close();
+                output.close();
+                return -1;
+            }
+        } else {
+            if(!get_args(output, command_args_nums[command], next_line, i)){
+                std::cout << "Bad arguments in line " << line << std::endl;
+                input.close();
+                output.close();
+                return -1;
+            }
         }
+
         line++;
     }
 
