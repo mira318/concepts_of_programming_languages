@@ -3,18 +3,24 @@
 #include <string>
 #include <cstring>
 
-const int USER_REGISTER_NUM = 7;
-const int IP_REGISTER = 7;
-const int REGISTER_NUM = 8;
+const int USER_REGISTER_NUM = 12;
+const int BP_REGISTER = 13;
+const int SP_REGISTER = 14;
+const int IP_REGISTER = 15;
+const int REGISTER_NUM = 16;
+const int STACK_SIZE = 1e5;
 
 char* memory_buffer;
 int buffer_sz = 0;
 int registers[REGISTER_NUM];
+char stack[STACK_SIZE];
 
 int read_something(int* res){
     int val_type;
+    int val_stack_start = registers[SP_REGISTER] - 2 * sizeof(int);
     memcpy(&val_type, memory_buffer + registers[IP_REGISTER], sizeof(int));
     registers[IP_REGISTER] += sizeof(int);
+
     if(val_type <= 0 && val_type > 4){
         std::cout << "Unknown value type" << std::endl;
         return -1;
@@ -23,6 +29,7 @@ int read_something(int* res){
         std::cout << "Don't expect a string here" << std::endl;
         return -2;
     }
+
     memcpy(res, memory_buffer + registers[IP_REGISTER], sizeof(int));
     registers[IP_REGISTER] += sizeof(int);
     return val_type;
@@ -479,11 +486,46 @@ int output_string(){
     return 0;
 }
 
+int call(){
+    int address = read_address();
+    if(address < 0){
+        return -3;
+    }
+
+    registers[BP_REGISTER] = registers[SP_REGISTER];
+    int address_type = 2;
+    memcpy(stack + registers[SP_REGISTER], &address_type, sizeof(int));
+    registers[SP_REGISTER] += sizeof(int);
+
+    int next_address_after_call = registers[IP_REGISTER] + 2 * sizeof(int);
+    memcpy(stack + registers[SP_REGISTER], &next_address_after_call, sizeof(int));
+    registers[SP_REGISTER] += sizeof(int);
+
+    registers[IP_REGISTER] = address;
+    return 0;
+}
+
+int ret(){
+    int val_type;
+    int back_address;
+    memcpy(&val_type, stack + registers[BP_REGISTER], sizeof(int));
+    if(val_type != 2){
+        return -4;
+    }
+    registers[BP_REGISTER] += sizeof(int);
+    memcpy(&back_address, stack + registers[BP_REGISTER], sizeof(int));
+    if(!check_address(back_address)){
+        return -4;
+    }
+    registers[BP_REGISTER] -= 3 * sizeof(int);
+    registers[IP_REGISTER] = back_address;
+    return 0;
+}
+
 int read_command(){
     int command_num;
     memcpy(&command_num, memory_buffer + registers[IP_REGISTER], sizeof(int));
     registers[IP_REGISTER] += sizeof(int);
-    //std::cout << "command_num = " << command_num << std::endl;
     switch(command_num){
         case 1:
             return move();
@@ -505,6 +547,10 @@ int read_command(){
             return move_instruction_pointer();
         case 13:
             return output_string();
+        case 14:
+            return call();
+        case 15:
+            return ret();
         default:
             return -2;
     }
@@ -528,7 +574,6 @@ bool read_first_command(std::ifstream& binary_input, std::string& filename){
     memcpy(&command_num, memory_buffer + registers[IP_REGISTER], sizeof(int));
     if(command_num != 12){
         std::cout << "ERROR: Any program should start with IP command." << std::endl;
-        binary_input.close();
         return 0;
     }
     registers[IP_REGISTER] += sizeof(int);
@@ -537,7 +582,6 @@ bool read_first_command(std::ifstream& binary_input, std::string& filename){
     memcpy(&arg_type, memory_buffer + registers[IP_REGISTER], sizeof(int));
     if(arg_type != 2){
         std::cout << "ERROR: IP command takes an address" << std::endl;
-        binary_input.close();
         return 0;
     }
     registers[IP_REGISTER] += sizeof(int);
@@ -549,6 +593,8 @@ bool read_first_command(std::ifstream& binary_input, std::string& filename){
         return 0;
     }
     registers[IP_REGISTER] = command_start_address;
+    registers[SP_REGISTER] = 0;
+    registers[BP_REGISTER] = 0;
     return 1;
 }
 
@@ -583,7 +629,10 @@ int main(){
                 return -1;
 
             case -3:
-                input.close();
+                return -1;
+
+            case -4:
+                std::cout << "Missing back pointer in call stack" << std::endl;
                 return -1;
 
             default:
