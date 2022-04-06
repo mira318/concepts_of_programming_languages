@@ -1,6 +1,0 @@
-cmake_minimum_required(VERSION 3.16)
-project(concepts_of_programming_languages)
-
-set(CMAKE_CXX_STANDARD 17)
-
-add_executable(concepts_of_programming_languages VM.cpp)
