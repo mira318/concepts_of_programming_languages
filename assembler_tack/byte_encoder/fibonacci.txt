@@ -1,0 +1,31 @@
+IP #130
+$0
+%This program counts Fibonacci number n. Pleas write n bigger than 0 and less than 47.
+$0
+%The answer is
+$0
+
+OUTS #24
+INP CX
+MOVE 1 DX
+SUB DX CX
+JZ DX #430
+MOVE CX DX
+SUB DX 2
+MOVE 1 AX
+MOVE 1 BX
+
+JZ DX #490
+MOVE BX CX
+MOVE AX BX
+ADD AX CX
+SUB DX 1
+IP #310
+
+OUTS #113
+OUT 1
+STOP
+
+OUTS #113
+OUT AX
+STOP

@@ -1,0 +1,14 @@
+IP #133
+$0
+%Done assembly recursion:)
+$0
+.counter:
+SUB AX 1
+JZ AX #113
+CALL .counter
+RET
+
+MOVE 5 AX
+CALL .counter
+OUTS #24
+STOP

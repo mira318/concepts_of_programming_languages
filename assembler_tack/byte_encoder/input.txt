@@ -1,0 +1,7 @@
+IP #16
+%abacabauig
+MOV 5 AX
+MOV 4 BX
+ADD AX BX
+OUT AX
+STOP
