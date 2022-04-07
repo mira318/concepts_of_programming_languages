@@ -3,19 +3,20 @@
 
 const int MAX_BUFFERS_NUM = 1e5;
 int last_env = -1;
-bool is_flying = false;
 std::jmp_buf env_buffers[MAX_BUFFERS_NUM];
+int exception = -1, checking_exception = -1;
 
 #define TRY last_env++;                                                                          \
-            int exception = setjmp(env_buffers[last_env]);                                       \
+            exception = setjmp(env_buffers[last_env]);                                           \
             if(exception == 0)
 
 #define THROW(a) exception = a;                                                                  \
-                 is_flying = true;                                                               \
                  std::longjmp(env_buffers[last_env], exception);
 
+#define RETHROW std::longjmp(env_buffers[last_env], exception);
+
 #define CATCH(b) else {                                                                          \
-                     int checking_exception = b;                                                 \
+                     checking_exception = b;                                                     \
                      last_env--;                                                                 \
                      if(exception != checking_exception) {                                       \
                          if(last_env < 0){                                                       \
@@ -91,5 +92,38 @@ int main(){
         std::cout << "Catching 5" << std::endl;
     }
     std::cout << "Gone through experimental try-catch" << std::endl;
+
+    TRY {
+        TRY {
+            TRY {
+                TRY {
+                    THROW(11)
+
+                } CATCH(7)
+                    std::cout << "Catching 7" << std::endl;
+                }
+
+            } CATCH(11)
+                std::cout << "Catching 11" << std::endl;
+                TRY {
+                    THROW(13)
+
+                } CATCH(13)
+                    std::cout << "Catching inner 13" << std::endl;
+                }
+
+                RETHROW
+            }
+
+        } CATCH(11)
+            std::cout << "Catching rethrown 11" << std::endl;
+            THROW(7)
+
+        }
+
+    } CATCH(7)
+        std::cout << "Caught 7 as final" << std::endl;
+    }
+    std::cout << "Gone through harder example" << std::endl;
     return 0;
 }
