@@ -33,7 +33,7 @@ public:
 void b() {
     MyDouble in_b = MyDouble(3.0);
     REGISTER(MyDouble, in_b);
-    THROW(8)
+    THROW("EOF_EXCEPTION")
 }
 
 void c(){
@@ -47,8 +47,8 @@ void a(){
         MyCrocodile try_in_a = MyCrocodile(2, "a");
         REGISTER(MyCrocodile, try_in_a);
         b();
-    CATCH(9)
-        std::cout << "Catching 9" << std::endl;
+    CATCH("FILE_NOT_FOUNDED_EXCEPTION")
+        std::cout << "Catching FILE_NOT_FOUNDED_EXCEPTION" << std::endl;
     END_CATCH
     c();
 }
@@ -58,8 +58,8 @@ void test_in_function(){
         MyDouble first_try = MyDouble(1.0);
         REGISTER(MyDouble, first_try);
         a();
-    CATCH(8)
-        std::cout << "Catching 8" << std::endl;
+    CATCH("EOF_EXCEPTION")
+        std::cout << "Catching EOF_EXCEPTION" << std::endl;
     END_CATCH
     std::cout << "Done catching from function" << std::endl;
 
@@ -75,15 +75,15 @@ void test_simple_inner(){
             TRY
                 MyCrocodile crocodi = MyCrocodile(3, "abacaba");
                 REGISTER(MyCrocodile, crocodi)
-                THROW(5)
-            CATCH(9)
-                std::cout << "Catching 9" << std::endl;
+                THROW("CLASS_CAST_EXCEPTION")
+            CATCH("FILE_NOT_FOUNDED_EXCEPTION")
+                std::cout << "Catching FILE_NOT_FOUNDED_EXCEPTION" << std::endl;
             END_CATCH
-        CATCH(7)
-            std::cout << "Catching 7" << std::endl;
+        CATCH("ILLEGAL_ARGUMENT_EXCEPTION")
+            std::cout << "Catching ILLEGAL_ARGUMENT_EXCEPTION" << std::endl;
         END_CATCH
-    CATCH(5)
-        std::cout << "Catching 5" << std::endl;
+    CATCH("CLASS_CAST_EXCEPTION")
+        std::cout << "Catching CLASS_CAST_EXCEPTION" << std::endl;
     END_CATCH
     std::cout << "Gone through experimental try-catch" << std::endl;
 }
@@ -105,53 +105,71 @@ void test_hard_inner(){
                 TRY
                     MyDouble inside_double = MyDouble(4.04);
                     REGISTER(MyDouble, inside_double);
-                    THROW(11)
-                CATCH(7)
+                    THROW("ILLEGAL_ACCESS_EXCEPTION")
+                CATCH("ILLEGAL_ARGUMENT_EXCEPTION")
                     MyCrocodile extinct_animal = MyCrocodile(8, "aba");
                     REGISTER(MyCrocodile, extinct_animal);
-                    std::cout << "Catching 7" << std::endl;
+                    std::cout << "Catching ILLEGAL_ARGUMENT_EXCEPTION" << std::endl;
                 END_CATCH
-            CATCH(11)
+            CATCH("ILLEGAL_ACCESS_EXCEPTION")
                 MyDouble alive_double = MyDouble(6.66);
                 REGISTER(MyDouble, alive_double);
-                std::cout << "Catching 11" << std::endl;
+                std::cout << "Catching ILLEGAL_ACCESS_EXCEPTION" << std::endl;
                 TRY
                     MyCrocodile strange_croc = MyCrocodile(7, "a");
                     REGISTER(MyCrocodile, strange_croc);
                     int another_variable = 42;
                     REGISTER(int, another_variable);
-                    THROW(13)
-                CATCH(13)
+                    THROW("NO_SUCH_METHOD_EXCEPTION")
+                CATCH("NO_SUCH_METHOD_EXCEPTION")
                     std::string stringtype_variable = "Morax need mora";
                     REGISTER(std::string, stringtype_variable);
-                    std::cout << "Catching inner 13" << std::endl;
+                    std::cout << "Catching inner NO_SUCH_METHOD_EXCEPTION" << std::endl;
                     MyDouble have_mora = MyDouble(0.001);
                     REGISTER(MyDouble, have_mora);
                 END_CATCH
                 MyCrocodile inside_another_try = MyCrocodile(23, "time");
                 REGISTER(MyCrocodile, inside_another_try);
-                RETHROW
+                 RETHROW
             END_CATCH
-        CATCH(11)
-            std::cout << "Catching rethrown 11" << std::endl;
+        CATCH("ILLEGAL_ACCESS_EXCEPTION")
+            std::cout << "Catching rethrown ILLEGAL_ACCESS_EXCEPTION" << std::endl;
             MyDouble yet_another_double = MyDouble(321.464);
             REGISTER(MyDouble, yet_another_double)
             std::string precatious = "don't try to make it shorter";
             REGISTER(std::string, precatious)
             RETHROW
         END_CATCH
-    CATCH(11)
+    CATCH("ILLEGAL_ACCESS_EXCEPTION")
         MyDouble another_double_end = MyDouble(99.9);
         REGISTER(MyDouble, another_double_end);
-        std::cout << "Caught 7 as final" << std::endl;
+        std::cout << "Caught ILLEGAL_ACCESS_EXCEPTION as final" << std::endl;
     END_CATCH
     std::cout << "Gone through harder example" << std::endl;
 }
 
+void test_my_own_exception(){
+    TRY
+        TRY
+            TRY
+                THROW("Can't catch me?")
+            CATCH("Actually I can")
+                std::cout << "Caught by actually" << std::endl;
+            END_CATCH
+        CATCH("ILLEGAL_ARGUMENT_EXCEPTION")
+            std::cout << "Caught by known exception" << std::endl;
+        END_CATCH
+    CATCH("Can't catch me?")
+        std::cout << "Caught by itself" << std::endl;
+    END_CATCH
+}
+
 int main(){
+    INIT
     test_simple_inner();
     test_hard_inner();
     test_in_function();
+    test_my_own_exception();
     return 0;
 }
 

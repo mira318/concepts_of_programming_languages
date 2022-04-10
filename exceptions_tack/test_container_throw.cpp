@@ -26,23 +26,24 @@ public:
     }
     ~MyBadCrocodile(){
         TRY
-        std::cout << "destroying a crocodile, a = " << a << std::endl;
-        c.clear();
-        THROW(4)
-        CATCH(4)
-        std::cout << "caught 4 in destructor" << std::endl;
+           std::cout << "destroying a crocodile, a = " << a << std::endl;
+           c.clear();
+        THROW("ARITHMETIC_EXCEPTION")
+        CATCH("ARITHMETIC_EXCEPTION")
+           std::cout << "caught arithmetic exception in destructor" << std::endl;
         END_CATCH
     }
 };
 
 int main(){
+    INIT
     TRY
         MyDouble my_double = MyDouble(1.23);
         MyBadCrocodile croc = MyBadCrocodile(7, "abacaba");
         REGISTER(MyDouble, my_double);
         REGISTER(MyBadCrocodile, croc);
-        THROW(13)
-    CATCH(13)
+    THROW("NO_SUCH_METHOD_EXCEPTION")
+    CATCH("NO_SUCH_METHOD_EXCEPTION")
         std::cout << "Catching 13" << std::endl;
     END_CATCH
 }

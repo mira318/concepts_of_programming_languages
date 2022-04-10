@@ -10,7 +10,7 @@ std::jmp_buf env_buffers[MAX_BUFFERS_NUM];
 
 std::map<std::string, int> exceptions_types;
 std::string exception_stack[MAX_EXCEPTIONS_STACKED];
-int exception = -1, checking_exception = -1;
+int exception = -1;
 int pre_exception = -1;
 std::string last_thrown_exception;
 bool is_flying = false;
@@ -108,56 +108,19 @@ int get_exception_num(std::string user_exception_string) {
     return exceptions_types[user_exception_string];
 }
 
-bool compare_exceptions(){
-
+bool compare(std::string user_check){
+    int user_type = get_exception_num(user_check);
+    if(user_type != 14){
+        if(user_type == exception){
+            return true;
+        }
+        return false;
+    }
+    if(user_check.compare(last_thrown_exception) == 0){
+        return true;
+    }
+    return false;
 }
-#define REGISTER(TYPE, object) var_stack.push<TYPE>(false, &object);
-
-#define TRY if(!is_flying){                                                                      \
-                last_env++;                                                                      \
-                var_stack.push<int>(true, nullptr);                                              \
-            }                                                                                    \
-            pre_exception = setjmp(env_buffers[last_env]);                                       \
-            if(!is_flying){                                                                      \
-                exception = pre_exception;                                                       \
-            }                                                                                    \
-            if(pre_exception == 0) {
-
-#define THROW(a) if(is_flying){                                                                              \
-                     std::cout << "Terminated due to second exception call " << a << std::endl;              \
-                     exit(1);                                                                                \
-                 }                                                                                           \
-                 last_trown_exception = a;                                                                   \
-                 exception = get_exception_num(a);                                                           \
-                 last_exception++;                                                                           \
-                 exception_stack[last_exception] = a                                                         \
-                 is_flying = true;                                                                           \
-                 while(!var_stack.pop());                                                                    \
-                 std::longjmp(env_buffers[last_env], exception);
-
-#define RETHROW if(last_exception < 0){                                                                      \
-                    std::cout << "Terminated: rethrowning was impossible" << std::endl;                      \
-                }                                                                                            \
-                last_thrown_exception = exception_stack[last_exception];                                     \
-                while(!var_stack.pop());                                                                     \
-                std::longjmp(env_buffers[last_env], get_exception_num(exception_stack[last_exception]));
-
-#define CATCH(b)} else {                                                                                     \
-                     checking_exception = get_exception_num(b);                                              \
-                     last_env--;                                                                             \
-                     if(!compare(exception, checking_exception)) {                                           \
-                         if(last_env < 0){                                                                   \
-                             std::cout << "Terminated with exception " << last_thrown_exception << std::endl;\
-                             exit(1);                                                                        \
-                         }                                                                                   \
-                         while(!var_stack.pop());                                                            \
-                         std::longjmp(env_buffers[last_env], exception);                                     \
-                     } else {                                                                                \
-                         is_flying = false;                                                                  \
-                     }                                                                                       \
-
-#define END_CATCH last_exception--;                                                              \
-                 }
 
 void construct_map(){
     exceptions_types["RUNTIME_EXCEPTION"] = 1;
@@ -176,7 +139,51 @@ void construct_map(){
     exceptions_types["UNKNOWN_EXCEPTION"] = 14;
 }
 
-/*int main(){
-    construct_map();
-    return 0;
-}*/
+#define REGISTER(TYPE, object) var_stack.push<TYPE>(false, &object);
+#define INIT construct_map();
+
+#define TRY if(!is_flying){                                                                                  \
+                last_env++;                                                                                  \
+                var_stack.push<int>(true, nullptr);                                                          \
+            }                                                                                                \
+            pre_exception = setjmp(env_buffers[last_env]);                                                   \
+            if(!is_flying){                                                                                  \
+                exception = pre_exception;                                                                   \
+            }                                                                                                \
+            if(pre_exception == 0) {
+
+#define THROW(a) if(is_flying){                                                                              \
+                     std::cout << "Terminated due to second exception call " << a << std::endl;              \
+                     exit(1);                                                                                \
+                 }                                                                                           \
+                 last_thrown_exception = a;                                                                  \
+                 exception = get_exception_num(a);                                                           \
+                 last_exception++;                                                                           \
+                 exception_stack[last_exception] = a;                                                        \
+                 is_flying = true;                                                                           \
+                 while(!var_stack.pop());                                                                    \
+                 std::longjmp(env_buffers[last_env], exception);
+
+#define RETHROW if(last_exception < 0){                                                                      \
+                    std::cout << "Terminated: rethrowning was impossible" << std::endl;                      \
+                }                                                                                            \
+                last_thrown_exception = exception_stack[last_exception];                                     \
+                while(!var_stack.pop());                                                                     \
+                std::longjmp(env_buffers[last_env], get_exception_num(exception_stack[last_exception]));
+
+#define CATCH(b)} else {                                                                                     \
+                     last_env--;                                                                             \
+                     if(!compare(b)) {                                                                       \
+                         if(last_env < 0){                                                                   \
+                             std::cout << "Terminated with exception " << last_thrown_exception << std::endl;\
+                             exit(1);                                                                        \
+                         }                                                                                   \
+                         while(!var_stack.pop());                                                            \
+                         std::longjmp(env_buffers[last_env], exception);                                     \
+                     } else {                                                                                \
+                         is_flying = false;                                                                  \
+                     }                                                                                       \
+
+#define END_CATCH last_exception--;                                                                          \
+                 }
+
